@@ -464,6 +464,39 @@ void VoxelFile::rotate()
     update_box();
 }
 
+void VoxelFile::mirror(int axis)
+{
+    // parameter axis: 0: x, 1: y, 2: z
+    if (axis < 0 || axis >= 3)
+        return;
+    unsigned char * new_data = new unsigned char[x_size * y_size * z_size];
+    for (int x = 0; x < x_size; x++)
+    for (int y = 0; y < y_size; y++)
+    for (int z = 0; z < z_size; z++) {
+        int nx = x;
+        int ny = y;
+        int nz = z;
+        if (axis == 0)
+            nx = x_size - x - 1;
+        else if (axis == 1)
+            ny = y_size - y - 1;
+        else if (axis == 2)
+            nz = z_size - z - 1;
+        unsigned char temp = get(x, y, z);
+        new_data[z + y * z_size + x * z_size * y_size] = get(nx, ny, nz);
+        new_data[nz + ny * z_size + nx * z_size * y_size] = temp;
+    }
+    delete[] data;
+    data = new_data;
+    if (axis == 0)
+        x_offset = -x_offset - x_size;
+    else if (axis == 1)
+        y_offset = -y_offset - y_size;
+    else if (axis == 2)
+        z_offset = -z_offset - z_size;
+    update_box();
+}
+
 bool VoxelFile::load(const QString & filename)
 {
     QFile fp(filename);

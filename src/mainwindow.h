@@ -60,6 +60,7 @@ public:
     QMdiArea * mdi;
     QMenu * file_menu;
     QMenu * model_menu;
+    QMenu * mirror_menu;
 
     QAction * new_model_action;
     QAction * open_model_action;
@@ -71,6 +72,9 @@ public:
     QAction * half_size_action;
     QAction * optimize_action;
     QAction * rotate_action;
+    QAction * mirror_action_x;
+    QAction * mirror_action_y;
+    QAction * mirror_action_z;
 
     QDockWidget * model_dock;
     QDockWidget * palette_dock;
@@ -104,4 +108,5 @@ private slots:
     void half_size();
     void optimize();
     void rotate();
+    void mirror(int axis);
 };

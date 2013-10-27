@@ -104,6 +104,7 @@ public:
     void update_box();
     void optimize();
     void rotate();
+    void mirror(int axis);
 
     inline unsigned char & get(int x, int y, int z)
     {

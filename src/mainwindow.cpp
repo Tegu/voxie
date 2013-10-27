@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include <QCloseEvent>
 #include <QGLWidget>
 #include <QFileDialog>
+#include <QSignalMapper>
 
 QAction * create_tool_icon(const QString & name, const QString & v,
                            QActionGroup * group, int id)
@@ -69,7 +70,7 @@ MainWindow::MainWindow(QWidget * parent)
     mdi->setTabsClosable(true);
     mdi->setTabsMovable(true);
     setCentralWidget(mdi);
-    connect(mdi, SIGNAL(subWindowActivated(QMdiSubWindow*)), 
+    connect(mdi, SIGNAL(subWindowActivated(QMdiSubWindow*)),
         SLOT(on_window_change(QMdiSubWindow*)));
 
     create_actions();
@@ -118,6 +119,11 @@ void MainWindow::create_menus()
     model_menu->addAction(half_size_action);
     model_menu->addAction(optimize_action);
     model_menu->addAction(rotate_action);
+
+    mirror_menu = model_menu->addMenu(tr("Mirror"));
+    mirror_menu->addAction(mirror_action_x);
+    mirror_menu->addAction(mirror_action_y);
+    mirror_menu->addAction(mirror_action_z);
 }
 
 bool MainWindow::test_current_window(QWidget * other)
@@ -173,35 +179,35 @@ void MainWindow::create_actions()
 
     new_model_action = new QAction(tr("New voxel model"), this);
     connect(new_model_action, SIGNAL(triggered()), this, SLOT(new_model()));
- 
+
     open_model_action = new QAction(tr("Open voxel model"), this);
     connect(open_model_action, SIGNAL(triggered()), this, SLOT(open_model()));
- 
+
     save_action = new QAction(tr("&Save"), this);
     save_action->setShortcuts(QKeySequence::Save);
     connect(save_action, SIGNAL(triggered()), this, SLOT(save()));
- 
+
     save_as_action = new QAction(tr("Save &As..."), this);
     save_as_action->setShortcuts(QKeySequence::SaveAs);
     connect(save_as_action, SIGNAL(triggered()), this, SLOT(save_as()));
- 
+
     exit_action = new QAction(tr("E&xit"), this);
     exit_action->setShortcuts(QKeySequence::Quit);
     exit_action->setStatusTip(tr("Exit the application"));
     connect(exit_action, SIGNAL(triggered()), qApp, SLOT(closeAllWindows()));
- 
+
 /*        cut_action = new QAction(tr("Cu&t"), this);
     cut_action->setShortcuts(QKeySequence::Cut);
     cut_action->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
     connect(cut_action, SIGNAL(triggered()), this, SLOT(cut()));
- 
+
     copy_action = new QAction(tr("&Copy"), this);
     copy_action->setShortcuts(QKeySequence::Copy);
     copy_action->setStatusTip(tr("Copy the current selection's contents to the "
                              "clipboard"));
     connect(copy_action, SIGNAL(triggered()), this, SLOT(copy()));
- 
+
     paste_action = new QAction(tr("&Paste"), this);
     paste_action->setShortcuts(QKeySequence::Paste);
     paste_action->setStatusTip(tr("Paste the clipboard's contents into the current "
@@ -212,14 +218,14 @@ void MainWindow::create_actions()
 
     double_size_action = new QAction(tr("Double size"), this);
     // new_action->setShortcuts(QKeySequence::New);
-    connect(double_size_action, SIGNAL(triggered()), this, 
+    connect(double_size_action, SIGNAL(triggered()), this,
         SLOT(double_size()));
- 
+
     half_size_action = new QAction(tr("Half size"), this);
     // open_action->setShortcuts(QKeySequence::Open);
-    connect(half_size_action, SIGNAL(triggered()), this, 
+    connect(half_size_action, SIGNAL(triggered()), this,
         SLOT(half_size()));
- 
+
     optimize_action = new QAction(tr("Optimize dimensions"), this);
     // save_action->setShortcuts(QKeySequence::Save);
     connect(optimize_action, SIGNAL(triggered()), this,
@@ -230,6 +236,28 @@ void MainWindow::create_actions()
     connect(rotate_action, SIGNAL(triggered()), this,
         SLOT(rotate()));
 
+    // mirror functionality:
+
+    QSignalMapper * mirror_signal_mapper = new QSignalMapper(this);
+
+    mirror_action_x = new QAction(tr("on x axis"), this);
+    connect(mirror_action_x, SIGNAL(triggered()), mirror_signal_mapper,
+        SLOT(map()));
+
+    mirror_action_y = new QAction(tr("on y axis"), this);
+    connect(mirror_action_y, SIGNAL(triggered()), mirror_signal_mapper,
+        SLOT(map()));
+
+    mirror_action_z = new QAction(tr("on z axis"), this);
+    connect(mirror_action_z, SIGNAL(triggered()), mirror_signal_mapper,
+        SLOT(map()));
+
+    mirror_signal_mapper->setMapping(mirror_action_x, 0);
+    mirror_signal_mapper->setMapping(mirror_action_y, 1);
+    mirror_signal_mapper->setMapping(mirror_action_z, 2);
+
+    connect(mirror_signal_mapper, SIGNAL(mapped(int)), this,
+        SLOT(mirror(int)));
 }
 
 void MainWindow::closeEvent(QCloseEvent * event)
@@ -335,6 +363,14 @@ void MainWindow::rotate()
 {
     VoxelFile * voxel = get_voxel();
     voxel->rotate();
+    model_properties->update_controls();
+    model_changed();
+}
+
+void MainWindow::mirror(int axis)
+{
+    VoxelFile * voxel = get_voxel();
+    voxel->mirror(axis);
     model_properties->update_controls();
     model_changed();
 }
