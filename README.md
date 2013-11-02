@@ -1,5 +1,7 @@
-Voxie
-=====
+Voxie fork
+==========
+
+A Voxie fork by Tegu, credits go to matpow2.
 
 ![Voxie](http://mp2.dk/voxieimg.png "Voxie")
 

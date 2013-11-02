@@ -64,6 +64,7 @@ public:
 
     QAction * new_model_action;
     QAction * open_model_action;
+    QAction * clone_model_action;
     QAction * save_action;
     QAction * save_as_action;
     QAction * exit_action;
@@ -101,6 +102,7 @@ private slots:
 
     void new_model();
     void open_model();
+    void clone_model();
     void save();
     void save_as();
 

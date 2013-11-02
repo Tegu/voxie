@@ -70,7 +70,7 @@ MainWindow::MainWindow(QWidget * parent)
     mdi->setTabsClosable(true);
     mdi->setTabsMovable(true);
     setCentralWidget(mdi);
-    connect(mdi, SIGNAL(subWindowActivated(QMdiSubWindow*)),
+    connect(mdi, SIGNAL(subWindowActivated(QMdiSubWindow*)), 
         SLOT(on_window_change(QMdiSubWindow*)));
 
     create_actions();
@@ -108,6 +108,7 @@ void MainWindow::create_menus()
     file_menu = menuBar()->addMenu(tr("&File"));
     file_menu->addAction(new_model_action);
     file_menu->addAction(open_model_action);
+    file_menu->addAction(clone_model_action);
     file_menu->addSeparator();
     file_menu->addAction(save_action);
     file_menu->addAction(save_as_action);
@@ -170,7 +171,9 @@ int MainWindow::get_tool()
 
 void MainWindow::model_changed()
 {
-    get_voxel_editor()->on_changed();
+    VoxelEditor * ed = get_voxel_editor();
+    ed->voxel->reset_shape();
+    ed->on_changed();
 }
 
 void MainWindow::create_actions()
@@ -179,35 +182,38 @@ void MainWindow::create_actions()
 
     new_model_action = new QAction(tr("New voxel model"), this);
     connect(new_model_action, SIGNAL(triggered()), this, SLOT(new_model()));
-
+ 
     open_model_action = new QAction(tr("Open voxel model"), this);
     connect(open_model_action, SIGNAL(triggered()), this, SLOT(open_model()));
 
+    clone_model_action = new QAction(tr("Clone voxel model"), this);
+    connect(clone_model_action, SIGNAL(triggered()), this, SLOT(clone_model()));
+ 
     save_action = new QAction(tr("&Save"), this);
     save_action->setShortcuts(QKeySequence::Save);
     connect(save_action, SIGNAL(triggered()), this, SLOT(save()));
-
+ 
     save_as_action = new QAction(tr("Save &As..."), this);
     save_as_action->setShortcuts(QKeySequence::SaveAs);
     connect(save_as_action, SIGNAL(triggered()), this, SLOT(save_as()));
-
+ 
     exit_action = new QAction(tr("E&xit"), this);
     exit_action->setShortcuts(QKeySequence::Quit);
     exit_action->setStatusTip(tr("Exit the application"));
     connect(exit_action, SIGNAL(triggered()), qApp, SLOT(closeAllWindows()));
-
+ 
 /*        cut_action = new QAction(tr("Cu&t"), this);
     cut_action->setShortcuts(QKeySequence::Cut);
     cut_action->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
     connect(cut_action, SIGNAL(triggered()), this, SLOT(cut()));
-
+ 
     copy_action = new QAction(tr("&Copy"), this);
     copy_action->setShortcuts(QKeySequence::Copy);
     copy_action->setStatusTip(tr("Copy the current selection's contents to the "
                              "clipboard"));
     connect(copy_action, SIGNAL(triggered()), this, SLOT(copy()));
-
+ 
     paste_action = new QAction(tr("&Paste"), this);
     paste_action->setShortcuts(QKeySequence::Paste);
     paste_action->setStatusTip(tr("Paste the clipboard's contents into the current "
@@ -218,14 +224,14 @@ void MainWindow::create_actions()
 
     double_size_action = new QAction(tr("Double size"), this);
     // new_action->setShortcuts(QKeySequence::New);
-    connect(double_size_action, SIGNAL(triggered()), this,
+    connect(double_size_action, SIGNAL(triggered()), this, 
         SLOT(double_size()));
-
+ 
     half_size_action = new QAction(tr("Half size"), this);
     // open_action->setShortcuts(QKeySequence::Open);
-    connect(half_size_action, SIGNAL(triggered()), this,
+    connect(half_size_action, SIGNAL(triggered()), this, 
         SLOT(half_size()));
-
+ 
     optimize_action = new QAction(tr("Optimize dimensions"), this);
     // save_action->setShortcuts(QKeySequence::Save);
     connect(optimize_action, SIGNAL(triggered()), this,
@@ -316,6 +322,17 @@ void MainWindow::open_model()
     VoxelEditor * ed = new VoxelEditor(this);
     QMdiSubWindow * w = mdi->addSubWindow(ed);
     ed->load(name);
+    w->showMaximized();
+}
+
+void MainWindow::clone_model()
+{
+    VoxelFile * voxel = get_voxel();
+    if (voxel == NULL)
+        return;
+    VoxelEditor * ed = new VoxelEditor(this);
+    QMdiSubWindow * w = mdi->addSubWindow(ed);
+    ed->clone(voxel);
     w->showMaximized();
 }
 

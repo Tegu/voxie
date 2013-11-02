@@ -28,8 +28,26 @@ THE SOFTWARE.
 #include <QDataStream>
 
 RGBColor * global_palette = NULL;
+QString * palette_names = NULL;
 
 #include <glm/gtc/noise.hpp>
+
+void read_cstring(QDataStream & stream, QString & v)
+{
+    quint8 c;
+    while (!stream.atEnd()) {
+        stream >> c;
+        if (c == 0)
+            break;
+        v.append(c);
+    }
+}
+
+void write_cstring(QDataStream & stream, const QString & v)
+{
+    QByteArray bytes = v.toUtf8();
+    stream.writeRawData(bytes.constData(), bytes.size() + 1);
+}
 
 // VoxelModel
 
@@ -180,12 +198,20 @@ void VoxelFile::load_palette()
     if (global_palette != NULL)
         return;
     global_palette = new RGBColor[256];
+    palette_names = new QString[256];
     QFile fp(PALETTE_FILE);
     if (!fp.open(QIODevice::ReadOnly))
         return;
-    global_palette = new RGBColor[256];
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < 256; i++)
         fp.read((char*)&global_palette[i], sizeof(RGBColor));
+    QDataStream stream(&fp);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    if (!fp.atEnd()) {
+        // read names
+        for (int i = 0; i < 256; i++) {
+            read_cstring(stream, palette_names[i]);
+        }
+    }
     fp.close();
 }
 
@@ -196,8 +222,12 @@ void VoxelFile::save_palette()
     QFile fp(PALETTE_FILE);
     if (!fp.open(QIODevice::WriteOnly))
         return;
-    for (int i = 0; i < 64; i++)
+    for (int i = 0; i < 256; i++)
         fp.write((char*)&global_palette[i], sizeof(RGBColor));
+    QDataStream stream(&fp);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    for (int i = 0; i < 256; i++)
+        write_cstring(stream, palette_names[i]);
     fp.close();
 }
 
@@ -271,7 +301,6 @@ void VoxelFile::reset(int x_size, int y_size, int z_size)
     data = new unsigned char[x_size * y_size * z_size];
     memset(data, 255, x_size * y_size * z_size);
     points.clear();
-    update_box();
     reset_shape();
 }
 
@@ -316,9 +345,9 @@ void VoxelFile::resize(int x1, int y1, int z1, int new_x, int new_y, int new_z)
     for (int y = y1; y < y1 + new_y; y++)
     for (int z = z1; z < z1 + new_z; z++) {
         unsigned char c;
-        if (x < 0 || x >= this->x_size ||
-            y < 0 || y >= this->y_size ||
-            z < 0 ||z >= this->z_size)
+        if (x < 0 || x >= x_size ||
+            y < 0 || y >= y_size ||
+            z < 0 ||z >= z_size)
             c = VOXEL_AIR;
         else
             c = get(x, y, z);
@@ -329,13 +358,12 @@ void VoxelFile::resize(int x1, int y1, int z1, int new_x, int new_y, int new_z)
     }
     delete[] data;
     data = new_data;
-    this->x_size = new_x;
-    this->y_size = new_y;
-    this->z_size = new_z;
-    this->x_offset += x1;
-    this->y_offset += y1;
-    this->z_offset += z1;
-    update_box();
+    x_size = new_x;
+    y_size = new_y;
+    z_size = new_z;
+    x_offset += x1;
+    y_offset += y1;
+    z_offset += z1;
 }
 
 void VoxelFile::scale(float sx, float sy, float sz)
@@ -365,7 +393,6 @@ void VoxelFile::scale(float sx, float sy, float sz)
     x_offset = int(x_offset * sx);
     y_offset = int(y_offset * sy);
     z_offset = int(z_offset * sz);
-    update_box();
 }
 
 void VoxelFile::set_offset(int new_x, int new_y, int new_z)
@@ -373,15 +400,16 @@ void VoxelFile::set_offset(int new_x, int new_y, int new_z)
     x_offset = new_x;
     y_offset = new_y;
     z_offset = new_z;
-    update_box();
 }
 
-void VoxelFile::update_box()
+vec3 VoxelFile::get_min()
 {
-    vec3 size = vec3(x_size, y_size, z_size);
-    vec3 offset = vec3(x_offset, y_offset, z_offset);
-    min = offset;
-    max = offset + size;
+    return vec3(x_offset, y_offset, z_offset);
+}
+
+vec3 VoxelFile::get_max()
+{
+    return vec3(x_offset + x_size, y_offset + y_size, z_offset + z_size);
 }
 
 void VoxelFile::optimize()
@@ -461,7 +489,6 @@ void VoxelFile::rotate()
     x_size = new_x;
     y_size = new_y;
     z_size = new_z;
-    update_box();
 }
 
 void VoxelFile::mirror(int axis)
@@ -482,9 +509,7 @@ void VoxelFile::mirror(int axis)
             ny = y_size - y - 1;
         else if (axis == 2)
             nz = z_size - z - 1;
-        unsigned char temp = get(x, y, z);
-        new_data[z + y * z_size + x * z_size * y_size] = get(nx, ny, nz);
-        new_data[nz + ny * z_size + nx * z_size * y_size] = temp;
+        new_data[nz + ny * z_size + nx * z_size * y_size] = get(x, y, z);
     }
     delete[] data;
     data = new_data;
@@ -494,7 +519,6 @@ void VoxelFile::mirror(int axis)
         y_offset = -y_offset - y_size;
     else if (axis == 2)
         z_offset = -z_offset - z_size;
-    update_box();
 }
 
 bool VoxelFile::load(const QString & filename)
@@ -533,13 +557,12 @@ void VoxelFile::load_fp(QFile & fp)
     QString name;
     qint32 x, y, z;
     for (int i = 0; i < point_count; i++) {
-        stream >> name;
+        read_cstring(stream, name);
         stream >> x;
         stream >> y;
         stream >> z;
         points.push_back(ReferencePoint(name, x, y, z));
     }
-    update_box();
 }
 
 void VoxelFile::save(const QString & filename)
@@ -567,7 +590,7 @@ void VoxelFile::save_fp(QFile & fp)
     ReferencePoints::const_iterator it;
     for (it = points.begin(); it != points.end(); it++) {
         const ReferencePoint & point = *it;
-        stream << point.name;
+        write_cstring(stream, point.name);
         stream << point.x;
         stream << point.y;
         stream << point.z;
@@ -620,4 +643,19 @@ void VoxelFile::reset_shape()
 {
     delete shape;
     shape = NULL;
+}
+
+void VoxelFile::clone(VoxelFile & other)
+{
+    x_size = other.x_size;
+    y_size = other.y_size;
+    z_size = other.z_size;
+    x_offset = other.x_offset;
+    y_offset = other.y_offset;
+    z_offset = other.z_offset;
+    points = other.points;
+    delete[] data;
+    size_t size = x_size * y_size * z_size;
+    data = new unsigned char[size];
+    memcpy(data, other.data, size);
 }
