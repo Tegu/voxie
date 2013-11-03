@@ -72,7 +72,9 @@ public:
     QAction * double_size_action;
     QAction * half_size_action;
     QAction * optimize_action;
-    QAction * rotate_action;
+    QAction * rotate_action_x;
+    QAction * rotate_action_y;
+    QAction * rotate_action_z;
     QAction * mirror_action_x;
     QAction * mirror_action_y;
     QAction * mirror_action_z;
@@ -109,6 +111,6 @@ private slots:
     void double_size();
     void half_size();
     void optimize();
-    void rotate();
+    void rotate(int axis);
     void mirror(int axis);
 };

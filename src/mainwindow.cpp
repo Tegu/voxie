@@ -119,7 +119,11 @@ void MainWindow::create_menus()
     model_menu->addAction(double_size_action);
     model_menu->addAction(half_size_action);
     model_menu->addAction(optimize_action);
-    model_menu->addAction(rotate_action);
+
+    mirror_menu = model_menu->addMenu(tr("Rotate 90 degrees"));
+    mirror_menu->addAction(rotate_action_x);
+    mirror_menu->addAction(rotate_action_y);
+    mirror_menu->addAction(rotate_action_z);
 
     mirror_menu = model_menu->addMenu(tr("Mirror"));
     mirror_menu->addAction(mirror_action_x);
@@ -237,13 +241,31 @@ void MainWindow::create_actions()
     connect(optimize_action, SIGNAL(triggered()), this,
         SLOT(optimize()));
 
-    rotate_action = new QAction(tr("Rotate 90 degrees"), this);
-    // save_action->setShortcuts(QKeySequence::Save);
-    connect(rotate_action, SIGNAL(triggered()), this,
-        SLOT(rotate()));
+    // rotate functionality:
+    // a signal mapper used for giving parameters to the slot
+    QSignalMapper * rotate_signal_mapper = new QSignalMapper(this);
+
+    rotate_action_x = new QAction(tr("around x axis"), this);
+    connect(rotate_action_x, SIGNAL(triggered()), rotate_signal_mapper,
+        SLOT(map()));
+
+    rotate_action_y = new QAction(tr("around y axis"), this);
+    connect(rotate_action_y, SIGNAL(triggered()), rotate_signal_mapper,
+        SLOT(map()));
+
+    rotate_action_z = new QAction(tr("around z axis"), this);
+    connect(rotate_action_z, SIGNAL(triggered()), rotate_signal_mapper,
+        SLOT(map()));
+
+    rotate_signal_mapper->setMapping(rotate_action_x, 0);
+    rotate_signal_mapper->setMapping(rotate_action_y, 1);
+    rotate_signal_mapper->setMapping(rotate_action_z, 2);
+
+    connect(rotate_signal_mapper, SIGNAL(mapped(int)), this,
+        SLOT(rotate(int)));
 
     // mirror functionality:
-
+    // a signal mapper used for giving parameters to the slot
     QSignalMapper * mirror_signal_mapper = new QSignalMapper(this);
 
     mirror_action_x = new QAction(tr("on x axis"), this);
@@ -376,10 +398,10 @@ void MainWindow::optimize()
     model_changed();
 }
 
-void MainWindow::rotate()
+void MainWindow::rotate(int axis)
 {
     VoxelFile * voxel = get_voxel();
-    voxel->rotate();
+    voxel->rotate(axis);
     model_properties->update_controls();
     model_changed();
 }

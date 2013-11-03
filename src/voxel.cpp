@@ -465,27 +465,69 @@ z2_end:
     resize(x1, y1, z1, x2 - x1 + 1, y2 - y1 + 1, z2 - z1 + 1);
 }
 
-void VoxelFile::rotate()
+void VoxelFile::rotate(int axis)
 {
-    int new_x = y_size;
-    int new_y = x_size;
-    int new_z = z_size;
+    // axis: 0:x, 1:y, 2:z
+    if (axis < 0 || axis > 2)
+        return;
 
+    // set new size
+    int new_x, new_y, new_z;
+    if (axis == 0) {
+        new_x = x_size;
+        new_y = z_size;
+        new_z = y_size;
+    } else if (axis == 1) {
+        new_x = z_size;
+        new_y = y_size;
+        new_z = x_size;
+    } else if (axis == 2) {
+        new_x = y_size;
+        new_y = x_size;
+        new_z = z_size;
+    }
+
+    // move voxels
     unsigned char * new_data = new unsigned char[new_x * new_y * new_z];
     for (int x = 0; x < x_size; x++)
     for (int y = 0; y < y_size; y++)
     for (int z = 0; z < z_size; z++) {
-        int nx = y_size - y - 1;
-        int ny = x;
-        int nz = z;
+        int nx, ny, nz;
+        if (axis == 0) {
+            nx = x;
+            ny = z_size - z - 1;
+            nz = y;
+        } else if (axis == 1) {
+            nx = z_size - z - 1;
+            ny = y;
+            nz = x;
+        } else if (axis == 2) {
+            nx = y_size - y - 1;
+            ny = x;
+            nz = z;
+        }
         new_data[nz + ny * new_z + nx * new_z * new_y] = get(x, y, z);
     }
     delete[] data;
     data = new_data;
-    int x_off = x_offset;
-    int y_off = y_offset;
-    x_offset = -y_off - y_size;
-    y_offset = x_off;
+
+    // change model offsets and sizes
+    if (axis == 0) {
+        int z_off = z_offset;
+        int y_off = y_offset;
+        y_offset = -z_off - z_size;
+        z_offset = y_off;
+    } else if (axis == 1) {
+        int x_off = x_offset;
+        int z_off = z_offset;
+        x_offset = -z_off - z_size;
+        z_offset = x_off;
+    } else if (axis == 2) {
+        int x_off = x_offset;
+        int y_off = y_offset;
+        x_offset = -y_off - y_size;
+        y_offset = x_off;
+    }
     x_size = new_x;
     y_size = new_y;
     z_size = new_z;
@@ -493,7 +535,7 @@ void VoxelFile::rotate()
 
 void VoxelFile::mirror(int axis)
 {
-    // parameter axis: 0: x, 1: y, 2: z
+    // parameter axis: 0:x, 1:y, 2:z
     if (axis < 0 || axis >= 3)
         return;
     unsigned char * new_data = new unsigned char[x_size * y_size * z_size];

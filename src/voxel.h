@@ -103,7 +103,7 @@ public:
     void scale(float sx, float sy, float sz);
     void set_offset(int x, int y, int z);
     void optimize();
-    void rotate();
+    void rotate(int axis);
     void mirror(int axis);
     void clone(VoxelFile & other);
     vec3 get_min();
